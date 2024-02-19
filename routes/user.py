@@ -9,6 +9,9 @@ from flask_jwt_extended import decode_token
 from flask_jwt_extended.exceptions import JWTDecodeError
 from core.utils import send_mail
 from flask_restx import Api,Resource
+import jwt
+from jwt.exceptions import DecodeError
+
 
 app = init_app()
 api=Api(app=app,prefix='/api/user')
@@ -26,7 +29,7 @@ class UserApi(Resource):
             user=User(**Serializer.model_dump())
             db.session.add(user)
             db.session.commit()
-            token=user.token(aud='toVerify')
+            token=user.token(aud='to_verify')
             send_mail(user.username, user.email, token)
             return {"message":"user registered", "status": 201, 'data': user.to_json}, 201
         except ValidationError as e:
@@ -35,25 +38,7 @@ class UserApi(Resource):
             return {"message" : str(e), 'status': 400}, 400
 
 
-    def get(self):
-        try:
-            token = request.args.get('token')
-            if not token:
-                return {'msg': 'Token not found', 'status': 404}, 404
-            payload = decode_token(token)
-            user = User.query.filter_by(id=payload['sub']).first()
-            if not user:
-                return {'msg': 'User not found', 'status': 404}, 404
-            user.is_verified = True
-            db.session.commit()
-            return {'message': 'User verified successfully', 'status': 200}, 200
-        except JWTDecodeError:
-            return {"message":"Unable to decode token","status": 400}, 400
-        except Exception:
-            return {"message":"Something went wrong","status": 400}, 400
-
-
-@api.route("/login")
+@api.route("/login" , "/verify/")
 class LoginApi(Resource):
     def post(self):
         try:
@@ -67,3 +52,26 @@ class LoginApi(Resource):
             return {"message":f'Invalid {"".join(json.loads(e.json())[0]["loc"])}', 'status':400}, 400
         except Exception as e:
             return {"message":"Something was wrong", 'status':400}, 400
+        
+    def get(self):
+        try:
+            token = request.args.get('token')
+            if not token:
+                return {'msg': 'Token not found','status': 404}, 404
+            try:
+                payload = decode_token(token)
+            except JWTDecodeError:
+                return {"message": "Unable to decode token", "status": 400}, 400
+
+            user_id = payload.get('sub')
+
+            user = User.query.get(user_id)
+            if not user:
+                return {"message": "User not found", "status": 404}, 404
+            user.is_verified = True
+            db.session.commit()
+
+            return {"message": "User verified successfully", "status": 200}, 200
+        except Exception as e:
+            return {"message": str(e),'status':400}, 400
+    

@@ -34,7 +34,7 @@ class User(db.Model):
     }
 
     
-    def token(self, aud='default', exp=15):
+    def token(self, aud='to_verify', exp=15):
         return create_access_token(identity=self.id, 
                                    additional_claims={'exp':datetime.utcnow()+timedelta(minutes=exp), 
                                                       'aud': aud})
