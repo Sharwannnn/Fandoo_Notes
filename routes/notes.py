@@ -103,7 +103,7 @@ class noteapi(Resource):
             return {'message':'something went wrong','status':500},500
         
         
-@api.route('/archive')
+@api.route('/archive/<int:note_id>')
 class ArchiveApi(Resource):
 
     method_decorators = (authorize_user,)
@@ -113,14 +113,14 @@ class ArchiveApi(Resource):
             note = Notes.query.get(note_id)
             if not note:
                 return {'message': 'note not found', 'status': 400}, 400
-            note.archived = True
+            note.is_archieve = True
             db.session.commit()
             return {'message': 'note archived successfully', 'status': 200}, 200
         except Exception as e:
             return {'message': 'something went wrong', 'status': 500}, 500
 
 
-@api.route('/trash')
+@api.route('/trash/<int:note_id>')
 class TrashApi(Resource):
 
     method_decorators = (authorize_user,)
@@ -130,7 +130,7 @@ class TrashApi(Resource):
             note = Notes.query.get(note_id)
             if not note:
                 return {'message': 'note not found', 'status': 400}, 400
-            note.trashed = True
+            note.is_trash = True
             db.session.commit()
             return {'message': 'note moved to trash successfully', 'status': 200}, 200
         except Exception as e:
