@@ -8,7 +8,7 @@ import json
 from schemas.notes_schemas import NotesValidator
 from flask_jwt_extended import decode_token
 from core.middleware import authorize_user
-
+from core.utils import RedisUtils
 
 app=init_app()
 api=Api(app=app,prefix='/api')
@@ -24,6 +24,7 @@ class NotesApi(Resource):
             notes=Notes(**Serializer.model_dump())
             db.session.add(notes)
             db.session.commit()
+            RedisUtils.save(f'user_{notes.user_id}', f'notes_{notes.note_id}', json.dumps(notes.json))
             return {'message':"note created", "status": 201,'data':notes.json}, 201
         except Exception as e:
             return {'message':str(e), 'status':400},400

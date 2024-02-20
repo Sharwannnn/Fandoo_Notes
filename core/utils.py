@@ -1,6 +1,8 @@
 from . import mail
 from flask_mail import Message
 from settings import settings
+import redis
+import json
 
 def send_mail(user, email, token):
     msg = Message('Hello from the other side!', 
@@ -10,3 +12,18 @@ def send_mail(user, email, token):
                 f" http://127.0.0.1:5000/api/user/verify?token={token}"
     mail.send(msg)
     return "Message sent!"
+
+
+class RedisUtils:
+    redis = redis.StrictRedis(host=settings.redis_host, port=settings.redis_port, db=settings.redis_db)
+    @classmethod
+    def get(cls, key):
+        return cls.redis_client.hgetall(key)
+    @classmethod
+    def delete(cls, key):
+        cls.redis_client.hdel(key)
+    @classmethod
+    def save(cls, key, field, value):
+        cls.redis.hset(key, field, value)
+        
+        

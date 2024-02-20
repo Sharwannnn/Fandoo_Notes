@@ -10,6 +10,10 @@ class Settings(BaseSettings):
     jwt_algo: str
     email_username: str
     email_password: str
+    
+    redis_host:str
+    redis_port:int
+    redis_db:int
 
 settings = Settings()
 
