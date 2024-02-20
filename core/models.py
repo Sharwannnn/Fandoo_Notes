@@ -34,7 +34,7 @@ class User(db.Model):
     }
 
     
-    def token(self, aud='default', exp=15):
+    def token(self, aud='default', exp=60):
         return create_access_token(identity=self.id, 
                                    additional_claims={'exp':datetime.utcnow()+timedelta(minutes=exp), 
                                                       'aud': aud})
@@ -46,6 +46,8 @@ class Notes(db.Model):
     description=db.Column(db.Text,nullable=False)
     color=db.Column(db.String(20))
     reminder=db.Column(db.DateTime,default=None,nullable=True)
+    is_archieve=db.Column(db.Boolean,default=False)
+    is_trash=db.Column(db.Boolean,default=False)
     user_id=db.Column(db.Integer,db.ForeignKey('users.id',ondelete="CASCADE"),nullable=False)
     user=db.relationship('User',back_populates="note")
 
@@ -57,4 +59,6 @@ class Notes(db.Model):
             "description":self.description,
             "color":self.color,
             "reminder":self.reminder,
-            "user_id":self.user_id}
+            "is_archieve":self.is_archieve,
+            "is_trash":self.is_trash,
+            "user_id":self.user_id,}

@@ -17,7 +17,7 @@ api=Api(app=app,prefix='/api/user')
 def index():
     return {'message':'Fundoo Notes'}
 
-@api.route("/register", methods=['POST'])
+@api.route("/register", "/verify")
 class UserApi(Resource):
     
     def post(self):
@@ -33,7 +33,6 @@ class UserApi(Resource):
             return {"message" : f'Invalid {"".join(json.loads(e.json())[0]["loc"])}', 'status': 400}, 400
         except Exception as e:
             return {"message" : str(e), 'status': 400}, 400
-
 
     def get(self):
         try:
