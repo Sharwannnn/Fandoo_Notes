@@ -43,22 +43,7 @@ class NotesApi(Resource):
             return {'message':'Notes not found','status':400},400
         except Exception as e:
             return {'message':'something went wrong','status':500},500
-        
-    def put(self,*args,**kwargs):
-        try:
-            data=request.json
-            note=Notes.query.filter_by(id=data['id'], user_id=data['user_id']).first()
-            if not note:
-                return {'message':'note not found','status':'404'},404
-                
-            serializer=NotesValidator(**request.get_json())
-            updated_data=serializer.model_dump()
-            [setattr(note,key,value) for key, value in updated_data.items()]
-            db.session.commit()
-        except ValidationError as e:
-            return {'message':'there is an validation error','status':400},400
-        except Exception as e:
-            return {'message':str(e),'status':500},500
+
         
 @api.route('/notes/<int:note_id>')
 class noteapi(Resource):
@@ -69,21 +54,23 @@ class noteapi(Resource):
         try:
             note=Notes.query.filter_by(**kwargs).first()
             if not note:
-                return {'message':'note not found','status':'400'},400
-            return {'message':'note found','status':'200','note':note.json},200
+                return {'message':'Note not found','status':400},400
+            return {'message':'Note found','status':200,'note':note.json},200
         except Exception as e:
             return {'message':str(e),'status':500},500
         
-    def delete(self,*args,**kwargs):
+    def delete(self, *args, **kwargs):
         try:
-            note=Notes.query.filter_by(**kwargs).first()
+            note = Notes.query.filter_by(**kwargs).first()
+            # print(note)
             if not note:
-                return {'message':'note not found','status':404},404
+                return {'message': 'note not found', 'status': 400}, 400
             db.session.delete(note)
             db.session.commit()
-            return {'message':"notes deleted", "status": 204}, 204
+            RedisUtils.delete(f'user_{note.user_id}', f'notes_{note.note_id}')
+            return {'message': "note is sucessfully deleted", "status": 201}, 201
         except Exception as e:
-            return {'message':str(e), 'status':500},400
+            return {'message': str(e), 'status': 500}, 500
 
     def put(self,note_id):
         try:

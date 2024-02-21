@@ -18,10 +18,10 @@ class RedisUtils:
     redis = redis.StrictRedis(host=settings.redis_host, port=settings.redis_port, db=settings.redis_db)
     @classmethod
     def get(cls, key):
-        return cls.redis_client.hgetall(key)
+        return cls.redis.hgetall(key)
     @classmethod
-    def delete(cls, key):
-        cls.redis_client.hdel(key)
+    def delete(cls, key, field):
+        cls.redis.hdel(key, field)
     @classmethod
     def save(cls, key, field, value):
         cls.redis.hset(key, field, value)

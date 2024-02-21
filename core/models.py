@@ -62,3 +62,21 @@ class Notes(db.Model):
             "is_archieve":self.is_archieve,
             "is_trash":self.is_trash,
             "user_id":self.user_id,}
+        
+
+class Label(db.Model):
+    __tablename__='labels'
+    label_id=db.Column(db.Integer,primary_key=True,nullable=False,autoincrement=True)
+    name=db.Column(db.String(50), nullable=False)
+    user_id=db.Column(db.Integer, db.ForeignKey("user.id", ondelete="CASCADE"), nullable=False)
+    user=db.relationship("User", back_populates="label")
+    
+    
+    
+    @property
+    def json(self):
+        return {
+            "label_id":self.label_id,
+            "name":self.name,
+            "user_id":self.user_id,
+        }
