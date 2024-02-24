@@ -9,6 +9,8 @@ from flask_jwt_extended import decode_token
 from flask_jwt_extended.exceptions import JWTDecodeError
 from core.utils import send_mail
 from flask_restx import Api,Resource
+from core.tasks import celery_send_mail
+
 
 app = init_app()
 api=Api(app=app,prefix='/api/user')
@@ -27,7 +29,8 @@ class UserApi(Resource):
             db.session.add(user)
             db.session.commit()
             token=user.token(aud='toVerify')
-            send_mail(user.username, user.email, token)
+            # send_mail(user.username, user.email, token)
+            celery_send_mail.delay(user.username, user.email, token)
             return {"message":"user registered", "status": 201, 'data': user.to_json}, 201
         except ValidationError as e:
             return {"message" : f'Invalid {"".join(json.loads(e.json())[0]["loc"])}', 'status': 400}, 400

@@ -9,6 +9,10 @@ from schemas.notes_schemas import NotesValidator
 from flask_jwt_extended import decode_token
 from core.middleware import authorize_user
 from core.utils import RedisUtils
+from redbeat import RedBeatSchedulerEntry as Task
+from celery.schedules import crontab
+from core.tasks import celery as c_app
+from datetime import datetime,timedelta,timezone
 
 app=init_app()
 api=Api(app=app,prefix='/api')
@@ -17,13 +21,27 @@ api=Api(app=app,prefix='/api')
 class NotesApi(Resource):
 
     method_decorators = (authorize_user,)
-
     def post(self,*args,**kwargs):
         try:
             Serializer=NotesValidator(**request.get_json())
             notes=Notes(**Serializer.model_dump())
             db.session.add(notes)
             db.session.commit()
+            
+            reminder=notes.reminder
+            if reminder:
+                reminder_task = Task(name=f'user_{notes.user_id} - note_{notes.note_id}',
+                task='core.tasks.celery_send_mail',
+                schedule = crontab(
+                    minute=reminder.minute,
+                    hour=reminder.hour,
+                    day_of_month=reminder.day,
+                    month_of_year=reminder.month),
+                app = c_app,
+                args = [notes.user.username, notes.user.email,notes.user.token()])
+            
+                reminder_task.save()
+            
             RedisUtils.save(f'user_{notes.user_id}', f'notes_{notes.note_id}', json.dumps(notes.json))
             return {'message':"note created", "status": 201,'data':notes.json}, 201
         except Exception as e:
@@ -123,3 +141,6 @@ class TrashApi(Resource):
             return {'message': 'note moved to trash successfully', 'status': 200}, 200
         except Exception as e:
             return {'message': 'something went wrong', 'status': 500}, 500
+      
+      
+
