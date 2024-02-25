@@ -122,4 +122,36 @@ class TrashApi(Resource):
             db.session.commit()
             return {'message': 'note moved to trash successfully', 'status': 200}, 200
         except Exception as e:
+<<<<<<< Updated upstream
             return {'message': 'something went wrong', 'status': 500}, 500
+=======
+            return {'message': 'something went wrong', 'status': 500}, 500
+      
+      
+@api.route("/collaborate")
+class CollaborateApi(Resource):
+    method_decorators = (authorize_user,)
+    # @api.expect(api.model('AddColaborators', {"id":fields.Integer(),"user_ids":fields.List(fields.Integer)}))
+    def post(*args, **kwargs):
+        try:
+            data=request.json
+            if data['user_id'] in data["user_ids"]:
+                return {"message":"Sharing not allowed on the same user","status":403},403
+            note=Notes.query.filter_by(note_id=data["id"],user_id=data["user_id"]).first()
+            if not note:
+                return {"message":"Note not found","status":404},404
+            try:
+                users_to_add = [User.query.filter_by(id=id).first() for id in data["user_ids"]]
+                existing_collaborators=set(note.c_users)
+                users_to_add=[user for user in users_to_add if user not in existing_collaborators]
+                note.c_users.extend(users_to_add)
+                db.session.commit()
+                added_users=[user.id for user in users_to_add]
+                if added_users:
+                    return {"message":f"Note_{note.note_id} shared with users {','.join(map(str,added_users))}", "status": 201},201
+                return {"message" : "Note can't be shared with the users who already have access","status":403},403
+            except sqlalchemy.exc.IntegrityError as e:
+                    return {"message":str(e),"status":409},409
+        except Exception as e:
+            return {"message":str(e),"status" :500},500
+>>>>>>> Stashed changes

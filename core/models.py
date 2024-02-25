@@ -2,7 +2,17 @@ from core import db
 from passlib.hash import pbkdf2_sha256
 from datetime import datetime,timedelta
 from flask_jwt_extended import create_access_token
+from sqlalchemy import UniqueConstraint
 
+
+collaborators = db.Table(
+    "collaborators",
+    db.metadata,
+    db.Column("user_id", db.ForeignKey("users.id")),
+    db.Column("note_id", db.ForeignKey("notes.note_id")),
+    db.Column("access_type", db.String(20), default='read-only'),
+    UniqueConstraint("user_id", "note_id", name="unique_user_note")
+)
 
 class User(db.Model):
     __tablename__='users'
@@ -13,6 +23,8 @@ class User(db.Model):
     location=db.Column(db.String(100),nullable=False)
     is_verified=db.Column(db.Boolean, default=False)
     note=db.relationship('Notes',back_populates='user')
+    label=db.relationship('Label',back_populates='user')
+    c_notes = db.relationship('Notes',secondary=collaborators, back_populates='c_users')
 
     def __init__(self,username,password,email,location,**kwargs):
         self.username=username
@@ -50,6 +62,19 @@ class Notes(db.Model):
     is_trash=db.Column(db.Boolean,default=False)
     user_id=db.Column(db.Integer,db.ForeignKey('users.id',ondelete="CASCADE"),nullable=False)
     user=db.relationship('User',back_populates="note")
+<<<<<<< Updated upstream
+=======
+    c_users=db.relationship('User',secondary=collaborators,back_populates="c_notes")
+    
+    def __init__(self, title, description, color, user_id, reminder=None, **kwargs):
+  
+        self.title = title
+        self.description = description
+        self.color = color
+        self.user_id = user_id
+        self.is_archieve = False
+        self.is_trash = False
+>>>>>>> Stashed changes
 
     @property
     def json(self):
@@ -68,7 +93,11 @@ class Label(db.Model):
     __tablename__='labels'
     label_id=db.Column(db.Integer,primary_key=True,nullable=False,autoincrement=True)
     name=db.Column(db.String(50), nullable=False)
+<<<<<<< Updated upstream
     user_id=db.Column(db.Integer, db.ForeignKey("user.id", ondelete="CASCADE"), nullable=False)
+=======
+    user_id=db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+>>>>>>> Stashed changes
     user=db.relationship("User", back_populates="label")
     
     
