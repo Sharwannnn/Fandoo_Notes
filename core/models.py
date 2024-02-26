@@ -62,8 +62,6 @@ class Notes(db.Model):
     is_trash=db.Column(db.Boolean,default=False)
     user_id=db.Column(db.Integer,db.ForeignKey('users.id',ondelete="CASCADE"),nullable=False)
     user=db.relationship('User',back_populates="note")
-<<<<<<< Updated upstream
-=======
     c_users=db.relationship('User',secondary=collaborators,back_populates="c_notes")
     
     def __init__(self, title, description, color, user_id, reminder=None, **kwargs):
@@ -74,7 +72,6 @@ class Notes(db.Model):
         self.user_id = user_id
         self.is_archieve = False
         self.is_trash = False
->>>>>>> Stashed changes
 
     @property
     def json(self):
@@ -93,11 +90,7 @@ class Label(db.Model):
     __tablename__='labels'
     label_id=db.Column(db.Integer,primary_key=True,nullable=False,autoincrement=True)
     name=db.Column(db.String(50), nullable=False)
-<<<<<<< Updated upstream
-    user_id=db.Column(db.Integer, db.ForeignKey("user.id", ondelete="CASCADE"), nullable=False)
-=======
     user_id=db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
->>>>>>> Stashed changes
     user=db.relationship("User", back_populates="label")
     
     

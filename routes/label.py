@@ -8,11 +8,6 @@ import json
 from schemas.label_schemas import LabelValidator
 from flask_jwt_extended import decode_token
 from core.middleware import authorize_user
-<<<<<<< Updated upstream
-# from core.utils import RedisUtils
-=======
->>>>>>> Stashed changes
-
 
 app=init_app()
 api=Api(app=app,prefix='/api')
@@ -59,12 +54,6 @@ class LabelApi(Resource):
                 setattr(label, key, value)
             db.session.commit()
             return {'message': 'Label updated successfully', 'status': 200}, 200
-<<<<<<< Updated upstream
-        # except ValidationError as e:
-        #     err=json.loads(e.json)
-        #     return {'message':'wrong','status':400},400
-=======
->>>>>>> Stashed changes
         except Exception as e:
             return {'message': str(e), 'status': 500}, 500
 

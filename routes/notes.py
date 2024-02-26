@@ -122,9 +122,6 @@ class TrashApi(Resource):
             db.session.commit()
             return {'message': 'note moved to trash successfully', 'status': 200}, 200
         except Exception as e:
-<<<<<<< Updated upstream
-            return {'message': 'something went wrong', 'status': 500}, 500
-=======
             return {'message': 'something went wrong', 'status': 500}, 500
       
       
@@ -154,4 +151,3 @@ class CollaborateApi(Resource):
                     return {"message":str(e),"status":409},409
         except Exception as e:
             return {"message":str(e),"status" :500},500
->>>>>>> Stashed changes
