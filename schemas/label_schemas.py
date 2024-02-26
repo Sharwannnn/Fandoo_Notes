@@ -4,4 +4,4 @@ from datetime import datetime
 
 class LabelValidator(BaseModel):
     name:Optional[str]=None
-    user:Optional[str]=None
+    user_id:int
