@@ -163,7 +163,7 @@ class CollaborateApi(Resource):
                 return {"message":"Sharing not allowed on the same user","status":403},403
             note=Notes.query.filter_by(note_id=data["note_id"],user_id=data["user_id"]).first()
             if not note:
-                return {"message":"Note not found","status":404},404
+                return {"message":"Note not found","status":404},404    
             for user_id in data["user_ids"]:
                 user = User.query.filter_by(id=user_id).first()
                 if not user:
@@ -175,3 +175,66 @@ class CollaborateApi(Resource):
                 return {"message":str(e),"status":409},409
         except Exception as e:
             return {"message":str(e),"status" :500},500
+        
+
+    def delete(self, **kwargs):
+        try:
+            data = request.json
+            note_id = data.get('note_id')
+            user_ids = data.get("user_ids", [])
+            user_id = data.get('user_id')
+
+            if user_id in user_ids:
+                return {"message": "Cannot remove yourself", "status": 403}, 403
+
+            note = Notes.query.filter_by(note_id=note_id).first()
+            if not note:
+                return {"message": "Note not found", "status": 404}, 404
+
+            for user_id in user_ids:
+                user = User.query.get(user_id)
+                if user in note.c_users:
+                    note.c_users.remove(user)
+                else:
+                    return {"message": f"User {user_id} not a collaborator", "status": 404}, 404
+
+            db.session.commit()
+            return {"message": "Collaborators removed successfully", "status": 200}, 200
+        except Exception as e:
+            return {"message": str(e), "status": 500}, 500
+        
+        
+    
+    def get(self,**kwargs):
+        try:
+            user_id = kwargs.get('user_id')
+            if not user_id:
+                return {'message': 'User ID not provided', 'status': 400}, 400
+
+            user = User.query.get(user_id)
+            if not user:
+                return {'message': 'User not found', 'status': 404}, 404
+
+            # Notes owned by the user
+            user_notes = [note.json for note in user.note]
+
+            # Notes shared to user
+            shared_notes = [note.json for note in user.c_notes]
+            all_notes = user_notes + shared_notes
+
+            if all_notes:
+                return {'message': 'Notes found', 'status': 200, 'data': all_notes}, 200
+            else:
+                return {'message': 'No notes found', 'status': 404}, 404
+
+        except Exception as e:
+            return {'message': str(e), 'status': 500}, 500
+
+    
+    
+
+        
+
+        
+        
+    
