@@ -2,7 +2,7 @@ from core import db
 from core import init_app
 from flask_restx import Api,Resource
 from flask import request
-from core.models import Notes
+from core.models import Notes, User
 from pydantic import ValidationError
 import json
 from schemas.notes_schemas import NotesValidator
@@ -13,6 +13,7 @@ from redbeat import RedBeatSchedulerEntry as Task
 from celery.schedules import crontab
 from core.tasks import celery as c_app
 from datetime import datetime,timedelta,timezone
+import sqlalchemy
 
 app=init_app()
 api=Api(app=app,prefix='/api')
@@ -54,9 +55,11 @@ class NotesApi(Resource):
             user_id = kwargs.get('user_id')
             if not user_id:
                 return {'message':'userid not provided','status':400},400
-            
+            user=User.query.filter_by(id=user_id).first()
+            shared_notes=[note.json for note in user.c_notes]
             notes=Notes.query.filter_by(user_id=user_id).all()
             if notes:
+                shared_notes.extend([note.json for note in notes])
                 return {'message':'notes found','status':200,'data':[note.json for note in notes]},200
             return {'message':'Notes not found','status':400},400
         except Exception as e:
@@ -70,12 +73,18 @@ class noteapi(Resource):
 
     def get(self,*args,**kwargs):
         try:
-            note=Notes.query.filter_by(**kwargs).first()
-            if not note:
-                return {'message':'Note not found','status':400},400
-            return {'message':'Note found','status':200,'note':note.json},200
+            user_id = kwargs.get('user_id')
+            if not user_id:
+                return {'message':'userid not provided','status':400},400
+            user=User.query.filter_by(id=user_id).first()
+            shared_notes=[note.json for note in user.c_notes]
+            notes=Notes.query.filter_by(user_id=user_id).all()
+            if notes:
+                shared_notes.extend([note.json for note in notes])
+                return {'message':'notes found','status':200,'data':[note.json for note in notes]},200
+            return {'message':'Notes not found','status':400},400
         except Exception as e:
-            return {'message':str(e),'status':500},500
+            return {'message':'something went wrong','status':500},500
         
     def delete(self, *args, **kwargs):
         try:
@@ -144,3 +153,25 @@ class TrashApi(Resource):
       
       
 
+@api.route("/collaborate")
+class CollaborateApi(Resource):
+    method_decorators = (authorize_user,)
+    def post(*args, **kwargs):
+        try:
+            data=request.json
+            if data['user_id'] in data["user_ids"]:
+                return {"message":"Sharing not allowed on the same user","status":403},403
+            note=Notes.query.filter_by(note_id=data["note_id"],user_id=data["user_id"]).first()
+            if not note:
+                return {"message":"Note not found","status":404},404
+            for user_id in data["user_ids"]:
+                user = User.query.filter_by(id=user_id).first()
+                if not user:
+                    return {"message":"User not found","status":404},404
+                note.c_users.append(user)
+            db.session.commit()
+            return {"message" : "Note shared successfully","status":200 },200
+        except sqlalchemy.exc.IntegrityError as e:
+                return {"message":str(e),"status":409},409
+        except Exception as e:
+            return {"message":str(e),"status" :500},500
