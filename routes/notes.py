@@ -1,6 +1,6 @@
 from core import db
 from core import init_app
-from flask_restx import Api,Resource
+from flask_restx import Api,Resource,fields
 from flask import request
 from core.models import Notes, User
 from pydantic import ValidationError
@@ -16,12 +16,45 @@ from datetime import datetime,timedelta,timezone
 import sqlalchemy
 
 app=init_app()
-api=Api(app=app,prefix='/api')
 
+api = Api(
+    app = app,
+    prefix = "/api",
+    doc = "/docs",
+    security = "apiKey",
+    description = "REST API for User Registrations and Notes",
+    title = "Fundoo Notes API",
+    default = "Notes Operations",
+    default_label = "Register",
+    authorizations = {
+        "apiKey": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header",
+            "required": True
+        }
+    },
+      
+)
+
+# api=Api(app=app,prefix='/api')
 @api.route('/notes')
 class NotesApi(Resource):
 
     method_decorators = (authorize_user,)
+    
+    @api.expect(
+        api.model(
+            "register",
+            {
+                "title": fields.String(),
+                "description": fields.String(),
+                "reminder": fields.String(),
+                "color": fields.String(),
+            },
+        )
+    )
+    
     def post(self,*args,**kwargs):
         try:
             Serializer=NotesValidator(**request.get_json())
@@ -70,6 +103,7 @@ class NotesApi(Resource):
 class noteapi(Resource):
 
     method_decorators = (authorize_user,)
+    
 
     def get(self,*args,**kwargs):
         try:

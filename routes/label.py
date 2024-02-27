@@ -1,6 +1,6 @@
 from core import db
 from core import init_app
-from flask_restx import Api,Resource
+from flask_restx import Api,Resource,fields
 from flask import request
 from core.models import Label
 from pydantic import ValidationError
@@ -10,13 +10,43 @@ from flask_jwt_extended import decode_token
 from core.middleware import authorize_user
 
 app=init_app()
-api=Api(app=app,prefix='/api')
+
+api = Api(
+    app = app,
+    prefix = "/api",
+    doc = "/docs",
+    security = "apiKey",
+    description = "REST API for User Registrations and Notes",
+    title = "Fundoo Notes API",
+    default = "Notes Operations",
+    default_label = "Register",
+    authorizations = {
+        "apiKey": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header",
+            "required": True
+        }
+    },
+      
+)
+
+# api=Api(app=app,prefix='/api')
 
 
 @api.route('/labels')
 class LabelApi(Resource):
 
     method_decorators = (authorize_user,)
+    
+    @api.expect(
+        api.model(
+            "register",
+            {
+                "name": fields.String(),
+            },
+        )
+    )
 
     def post(self, *args, **kwargs):
         try:
@@ -27,6 +57,9 @@ class LabelApi(Resource):
             return {'message': 'Label created', 'status': 201, 'data': label.json}, 201
         except Exception as e:
             return {'message': str(e), 'status': 400}, 400
+        
+        
+    
 
 
 @api.route('/labels/<int:label_id>')

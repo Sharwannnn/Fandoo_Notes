@@ -8,12 +8,33 @@ import json
 from flask_jwt_extended import decode_token
 from flask_jwt_extended.exceptions import JWTDecodeError
 from core.utils import send_mail
-from flask_restx import Api,Resource
+from flask_restx import Api,Resource,fields
 from core.tasks import celery_send_mail
 
 
 app = init_app()
-api=Api(app=app,prefix='/api/user')
+
+api = Api(
+    app = app,
+    prefix = "/api",
+    doc = "/docs",
+    security = "apiKey",
+    description = "REST API for User Registrations and Notes",
+    title = "Fundoo Notes API",
+    default = "Notes Operations",
+    default_label = "Register",
+    authorizations = {
+        "apiKey": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header",
+            "required": True
+        }
+    },
+      
+)
+
+# api=Api(app=app,prefix='/api/user')
 
 @app.route('/')
 def index():
@@ -21,6 +42,18 @@ def index():
 
 @api.route("/register", "/verify")
 class UserApi(Resource):
+     
+    @api.expect(
+        api.model(
+            "register",
+            {
+                "username": fields.String(),
+                "password": fields.String(),
+                "email": fields.String(),
+                "location": fields.String(),
+            },
+        )
+    )
     
     def post(self):
         try:
