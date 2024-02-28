@@ -22,7 +22,7 @@ api = Api(
     description = "REST API for User Registrations and Notes",
     title = "Fundoo Notes API",
     default = "Notes Operations",
-    default_label = "Register",
+    default_label = "Register_user",
     authorizations = {
         "apiKey": {
             "type": "apiKey",
@@ -34,27 +34,15 @@ api = Api(
       
 )
 
-# api=Api(app=app,prefix='/api/user')
 
 @app.route('/')
 def index():
-    return {'message':'Fundoo Notes'}
+   return {'message':'Fundoo Notes'}
 
-@api.route("/register", "/verify")
+@api.route("/register")
 class UserApi(Resource):
      
-    @api.expect(
-        api.model(
-            "register",
-            {
-                "username": fields.String(),
-                "password": fields.String(),
-                "email": fields.String(),
-                "location": fields.String(),
-            },
-        )
-    )
-    
+    @api.expect(api.model("register_user",{"username": fields.String(),"password": fields.String(),"email": fields.String(),"location": fields.String(),},))
     def post(self):
         try:
             Serializer = UserValidator(**request.get_json())
@@ -69,27 +57,82 @@ class UserApi(Resource):
             return {"message" : f'Invalid {"".join(json.loads(e.json())[0]["loc"])}', 'status': 400}, 400
         except Exception as e:
             return {"message" : str(e), 'status': 400}, 400
+        
+        
 
-    def get(self):
+
+
+
+
+
+
+
+@api.route('/register/<int:id>')
+class UserApi(Resource):
+
+        
+    def delete(self, *args, **kwargs):
         try:
-            token = request.args.get('token')
+            user = User.query.filter_by(**kwargs).first()
+            if not user:
+                return {'message': 'user not found', 'status': 400}, 400
+            db.session.delete(user)
+            db.session.commit()
+            return {'message': "User is sucessfully deleted", "status": 201}, 201
+        except Exception as e:
+            return {'message': str(e), 'status': 500}, 500
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@api.route("/verify")
+class UserApi(Resource):
+    @api.expect(api.model("VerifyToken", {"token": fields.String(description="Verification token"),}))
+    def post(self):
+        try:
+            token = request.json.get("token")
             if not token:
-                return {'msg': 'Token not found', 'status': 404}, 404
+                return {'message': 'Token not provided', 'status': 400}, 400
+            
             payload = decode_token(token)
             user = User.query.filter_by(id=payload['sub']).first()
             if not user:
-                return {'msg': 'User not found', 'status': 404}, 404
+                return {'message': 'User not found', 'status': 404}, 404
+            
+            if user.is_verified:
+                return {'message': 'User already verified', 'status': 400}, 400
+            
             user.is_verified = True
             db.session.commit()
             return {'message': 'User verified successfully', 'status': 200}, 200
         except JWTDecodeError:
-            return {"message":"Unable to decode token","status": 400}, 400
-        except Exception:
-            return {"message":"Something went wrong","status": 400}, 400
+            return {'message': 'Unable to decode token', 'status': 400}, 400
+        except Exception as e:
+            return {'message': str(e), 'status': 500}, 500
+
+
 
 
 @api.route("/login")
 class LoginApi(Resource):
+    @api.expect(api.model("register",{"username": fields.String(),"password": fields.String(),},))   
     def post(self):
         try:
             data=request.get_json()

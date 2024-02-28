@@ -76,7 +76,9 @@ class LabelApi(Resource):
         except Exception as e:
             return {'message': str(e), 'status': 500}, 500
 
-    def put(self, label_id):
+    
+    @api.expect(api.model("register",{"name": fields.String(),},))
+    def put(self,label_id, *args, **kwargs):
         try:
             label = Label.query.get(label_id)
             if not label:
@@ -89,6 +91,8 @@ class LabelApi(Resource):
             return {'message': 'Label updated successfully', 'status': 200}, 200
         except Exception as e:
             return {'message': str(e), 'status': 500}, 500
+    
+
 
     def delete(self,*args,**kwargs):
         try:

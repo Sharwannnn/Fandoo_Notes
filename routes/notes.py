@@ -103,8 +103,6 @@ class NotesApi(Resource):
 class noteapi(Resource):
 
     method_decorators = (authorize_user,)
-    
-
     def get(self,*args,**kwargs):
         try:
             user_id = kwargs.get('user_id')
@@ -133,7 +131,9 @@ class noteapi(Resource):
         except Exception as e:
             return {'message': str(e), 'status': 500}, 500
 
-    def put(self,note_id):
+    
+    @api.expect(api.model("register",{"title": fields.String(),"description": fields.String(),"reminder": fields.String(),"color": fields.String(),},))
+    def put(self,note_id, *args, **kwargs):
         try:
             note=Notes.query.get(note_id)
             if not note:
@@ -190,6 +190,7 @@ class TrashApi(Resource):
 @api.route("/collaborate")
 class CollaborateApi(Resource):
     method_decorators = (authorize_user,)
+    @api.expect(api.model("register",{"note_id": fields.Integer(),"user_ids": fields.List(fields.Integer)},))
     def post(*args, **kwargs):
         try:
             data=request.json

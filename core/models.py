@@ -1,6 +1,6 @@
 from core import db
 from passlib.hash import pbkdf2_sha256
-from datetime import datetime,timedelta
+from datetime import datetime,timedelta,timezone
 from flask_jwt_extended import create_access_token
 from sqlalchemy import UniqueConstraint
 from sqlalchemy.orm import Mapped
@@ -73,6 +73,20 @@ class Notes(db.Model):
         self.user_id = user_id
         self.is_archieve = False
         self.is_trash = False
+        
+        if reminder:
+            self.set_reminder(reminder)
+            
+    def set_reminder(self, reminder):
+        # Set the time zone to 'Asia/Kolkata'
+        asia_kolkata_timezone = timezone(timedelta(hours=5, minutes=30))
+        reminder = reminder.replace(tzinfo=asia_kolkata_timezone)
+
+        # Assign the reminder time to the Notes object
+        self.reminder = reminder
+
+    def __str__(self) -> str:
+        return f'{self.title}-{self.id}'
 
     @property
     def json(self):
