@@ -36,17 +36,21 @@ api = Api(
 
 @api.route('/labels')
 class LabelRegisterApi(Resource):
+    """
+    This resource handles the creation of labels.
 
+    Methods:
+        - POST: Create a new label.
+
+    Request Body:
+        - name: str, required. The name of the label.
+
+    Responses:
+        - 201: If the label is successfully created. Returns a success message, status code 201, and the created label data.
+        - 400: If there is an error during label creation. Returns an error message and status code 400.
+    """
     method_decorators = (authorize_user,)
-    
-    @api.expect(
-        api.model(
-            "register",
-            {
-                "name": fields.String(),
-            },
-        )
-    )
+    @api.expect(api.model("register",{"name": fields.String(),},))
     def post(self, *args, **kwargs):
         try:
             serializer = LabelValidator(**request.get_json())
@@ -60,7 +64,20 @@ class LabelRegisterApi(Resource):
 
 @api.route('/labels/<int:label_id>')
 class LabelApi(Resource):
+    """
+    This resource retrieves information about a specific label.
 
+    Methods:
+        - GET: Retrieve information about a specific label.
+
+    Parameters:
+        - label_id: int, required. The ID of the label to retrieve.
+
+    Responses:
+        - 200: If the label is found and successfully retrieved. Returns a success message, status code 200, and the label data.
+        - 404: If the label with the specified ID is not found. Returns an error message and status code 404.
+        - 500: If any unexpected error occurs during the process. Returns an error message and status code 500.
+    """
     method_decorators = (authorize_user,)
 
     def get(self,*args,**kwargs):
@@ -73,6 +90,23 @@ class LabelApi(Resource):
             return {'message': str(e), 'status': 500}, 500
 
     
+    """
+    This resource handles the modification of a label.
+
+    Methods:
+        - PUT: Modify a label.
+
+    Parameters:
+        - label_id: int, required. The ID of the label to be modified.
+
+    Request Body:
+        - name: str, optional. The new name for the label.
+
+    Responses:
+        - 200: If the label is successfully updated. Returns a success message and status code 200.
+        - 404: If the label with the specified ID is not found. Returns an error message and status code 404.
+        - 500: If any unexpected error occurs during the process. Returns an error message and status code 500.
+    """
     @api.expect(api.model("register",{"name": fields.String(),},))
     def put(self,label_id, *args, **kwargs):
         try:
@@ -89,7 +123,20 @@ class LabelApi(Resource):
             return {'message': str(e), 'status': 500}, 500
     
 
+    """
+    This resource handles the deletion of a label.
 
+    Methods:
+        - DELETE: Delete a label.
+
+    Parameters:
+        - label_id: int, required. The ID of the label to be deleted.
+
+    Responses:
+        - 200: If the label is successfully deleted. Returns a success message and status code 200.
+        - 404: If the label with the specified ID is not found. Returns an error message and status code 404.
+        - 500: If any unexpected error occurs during the process. Returns an error message and status code 500.
+    """
     def delete(self,*args,**kwargs):
         try:
             label = Label.query.filter_by(**kwargs).first()

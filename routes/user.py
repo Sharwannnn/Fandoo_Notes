@@ -32,7 +32,26 @@ def index():
 
 @api.route("/register")
 class UserApi(Resource):
-     
+    """
+    This resource handles user registration.
+
+    Methods:
+        - POST: Register a new user with the username, password, email, and location.
+
+    Request Body:
+        - JSON object with the following fields:
+            - username: string, required. The username of the user.
+            - password: string, required. The password of the user.
+            - email: string, required. The email address of the user.
+            - location: string, required. The location of the user.
+
+    Responses:
+        - 201: User successfully registered. Returns a success message, status code 201,
+               and user data including username, email, location, and generated token.
+        - 400: If there are validation errors in the request data or any other unexpected error occurs.
+               Returns an error message and status code 400.
+        - 409: If there is a duplicate username or email in the database. Returns an error message and status code 409.
+    """
     @api.expect(api.model("register_user",{"username": fields.String(),"password": fields.String(),"email": fields.String(),"location": fields.String(),},))
     def post(self):
         try:
@@ -53,7 +72,20 @@ class UserApi(Resource):
 
 @api.route('/register/<int:id>')
 class UserDeleteAPI(Resource):
-        
+    """
+    This resource handles the deletion of a user by id.
+
+    Methods:
+        - DELETE: Delete a user with the specified id.
+
+    Parameters:
+        - id: int, required. This will identify the user and delete it.
+
+    Responses:
+        - 201: User successfully deleted. Returns a success message and status code 201.
+        - 400: If the user with the specified ID does not exist. Returns an error message and status code 400.
+        - 500: If any unexpected error occurs during the deletion process. Returns an error message and status code 500.
+    """
     def delete(self, *args, **kwargs):
         try:
             user = User.query.filter_by(**kwargs).first()
@@ -68,6 +100,22 @@ class UserDeleteAPI(Resource):
 
 @api.route("/verify")
 class UserVerifyAPI(Resource):
+    """
+    This resource handles user verification using a JWT token.
+
+    Methods:
+        - GET: Verify a user with the provided JWT token.
+
+    Query Parameters:
+        - token: string, required. The JWT token used for user verification.
+
+    Responses:
+        - 200: User successfully verified. Returns a success message and status code 200.
+        - 400: If the token is not provided, user not found, user already verified, or unable to decode token.
+               Returns an error message and status code 400.
+        - 404: If the user corresponding to the token is not found in the database. Returns an error message and status code 404.
+        - 500: If any unexpected error occurs during the verification process. Returns an error message and status code 500.
+    """
     @api.doc(params = {"token": "JWT token"})
     def get(self):
         try:
@@ -94,6 +142,24 @@ class UserVerifyAPI(Resource):
 
 @api.route("/login")
 class LoginApi(Resource):
+    """
+    This resource handles user login.
+
+    Methods:
+        - POST: Authenticate a user with the provided username and password.
+
+    Request Body:
+        - JSON object with the following fields:
+            - username: string, required. The username of the user.
+            - password: string, required. The password of the user.
+
+    Responses:
+        - 200: If login is successful. Returns a success message, status code 200,
+               and a JWT token for authentication.
+        - 401: If the provided username or password is invalid. Returns an error message and status code 401.
+        - 400: If there are validation errors in the request data or any other unexpected error occurs.
+               Returns an error message and status code 400.
+    """
     @api.expect(api.model("register",{"username": fields.String(),"password": fields.String(),},))   
     def post(self):
         try:

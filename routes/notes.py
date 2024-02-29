@@ -39,20 +39,30 @@ api = Api(
 
 @api.route('/notes')
 class NotesApi(Resource):
+    """
+    This resource handles the notes creation.
 
-    method_decorators = (authorize_user,)
-    
-    @api.expect(
-        api.model(
-            "register",
-            {
-                "title": fields.String(),
-                "description": fields.String(),
-                "reminder": fields.String(),
-                "color": fields.String(),
-            },
-        )
-    )
+    Method Decorators:
+        - authorize_user: Decorator to authorize user access.
+
+    Methods:
+        - POST: Create a new note with the provided title, description, reminder, and color.
+
+    Request Body:
+        - JSON object with the following fields:
+            - title: string, required. The title of the note.
+            - description: string, required. The description of the note.
+            - reminder: string, optional. The reminder date/time for the note (format: YYYY-MM-DD HH:MM).
+            - color: string, required. The color of the note.
+
+    Responses:
+        - 201: If the note is successfully created. Returns a success message, status code 201,
+               and the created note data.
+        - 400: If any unexpected error occurs during the creation process. Returns an error message and status code 400.
+    """
+    method_decorators = (authorize_user,)  
+    @api.expect(api.model("register",{"title": fields.String(),"description": fields.String(),"reminder": fields.String(),"color": fields.String(),
+            },))
     def post(self,*args,**kwargs):
         try:
             Serializer=NotesValidator(**request.get_json())
@@ -79,8 +89,24 @@ class NotesApi(Resource):
         except Exception as e:
             return {'message':str(e), 'status':400},400
         
-    
+    """
+    This resource handles the retrieval of all notes registered by the user.
 
+    Method Decorators:
+        - authorize_user: Decorator to authorize user access.
+
+    Methods:
+        - GET: Retrieve notes for the specified user.
+
+    Parameters:
+        - user_id: int, required. The unique identifier of the user whose notes are to be retrieved.
+
+    Responses:
+        - 200: If notes are found for the user. Returns a success message, status code 200,
+               and a list of note data.
+        - 400: If the user ID is not provided or if no notes are found for the user. Returns an error message and status code 400.
+        - 500: If any unexpected error occurs during the retrieval process. Returns an error message and status code 500.
+    """
     def get(self,*args,**kwargs):
         try:
             user_id = kwargs.get('user_id')
@@ -99,7 +125,25 @@ class NotesApi(Resource):
         
 @api.route('/notes/<int:note_id>')
 class NoteApiModification(Resource):
+    """
+    This resource handles the retrieval of a specific note.
 
+    Method Decorators:
+        - authorize_user: Decorator to authorize user access.
+
+    Methods:
+        - GET: Retrieve the note with the specified ID for the specified user.
+
+    Parameters:
+        - user_id: int, required. The unique identifier of the user.
+        - note_id: int, required. The unique identifier of the note to be retrieved.
+
+    Responses:
+        - 200: If the note is found for the user. Returns a success message, status code 200,
+               and the note data.
+        - 400: If the user ID is not provided or if the note is not found for the user. Returns an error message and status code 400.
+        - 500: If any unexpected error occurs during the retrieval process. Returns an error message and status code 500.
+    """
     method_decorators = (authorize_user,)
     def get(self,*args,**kwargs):
         try:
@@ -112,7 +156,21 @@ class NoteApiModification(Resource):
             return {'message':'Notes not found','status':400},400
         except Exception as e:
             return {'message':'something went wrong','status':500},500
-        
+    
+    """
+    This resource handles the deletion of a specific note.
+
+    Methods:
+        - DELETE: Delete the note with the specified ID.
+
+    Parameters:
+        - note_id: int, required. The unique identifier of the note to be deleted.
+
+    Responses:
+        - 201: If the note is successfully deleted. Returns a success message and status code 201.
+        - 400: If the note with the specified ID is not found. Returns an error message and status code 400.
+        - 500: If any unexpected error occurs during the deletion process. Returns an error message and status code 500.
+    """  
     def delete(self, *args, **kwargs):
         try:
             note = Notes.query.filter_by(**kwargs).first()
@@ -127,6 +185,27 @@ class NoteApiModification(Resource):
             return {'message': str(e), 'status': 500}, 500
 
     
+    
+    """
+    This resource handles the modification of a note identified by its ID.
+
+    Methods:
+        - PUT: Modify the note with the specified ID.
+
+    Parameters:
+        - note_id: int, required. The unique identifier of the note to be modified.
+
+    Request Body:
+        - title: str, required. The title of the note.
+        - description: str, required. The description of the note.
+        - reminder: str, optional. The reminder associated with the note.
+        - color: str, optional. The color code associated with the note.
+
+    Responses:
+        - 200: If the note is successfully updated. Returns a success message and status code 200.
+        - 400: If the note with the specified ID is not found or if there is a validation error in the request body. Returns an error message and status code 400.
+        - 500: If any unexpected error occurs during the modification process. Returns an error message and status code 500.
+    """
     @api.expect(api.model("register",{"title": fields.String(),"description": fields.String(),"reminder": fields.String(),"color": fields.String(),},))
     def put(self,note_id, *args, **kwargs):
         try:
@@ -149,7 +228,20 @@ class NoteApiModification(Resource):
         
 @api.route('/archive')
 class ArchiveApi(Resource):
-    
+    """
+    This resource handles archiving and unarchiving notes.
+
+    Methods:
+        - PUT: Archive or unarchive a note.
+
+    Request Body:
+        - note_id: int, required. The ID of the note to be archived or unarchived.
+
+    Responses:
+        - 200: If the note is successfully archived or unarchived. Returns a success message, status code 200, and the updated note data.
+        - 404: If the note with the specified ID is not found. Returns an error message and status code 404.
+        - 500: If any unexpected error occurs during the process. Returns an error message and status code 500.
+    """
     method_decorators = (authorize_user,)
     @api.expect(api.model('PutArchive', {"note_id":fields.Integer()}))
     def put(self,*args, **kwargs):
@@ -167,6 +259,20 @@ class ArchiveApi(Resource):
             app.logger.exception(e,exc_info=False)
             return {"message": str(e), "status" :500},500
 
+    """
+    This resource retrieves archived notes for a given user.
+
+    Methods:
+        - GET: Retrieve archived notes for the specified user.
+
+    Parameters:
+        - user_id: int, required. The ID of the user whose archived notes are to be retrieved.
+
+    Responses:
+        - 200: If archived notes are successfully retrieved. Returns a success message, status code 200, and the list of archived notes' data.
+        - 404: If no archived notes are found for the specified user. Returns an error message and status code 404.
+        - 500: If any unexpected error occurs during the process. Returns an error message and status code 500.
+    """
     def get(self,*args,**kwargs):
         try:
             user_id=kwargs["user_id"]
@@ -181,7 +287,20 @@ class ArchiveApi(Resource):
 
 @api.route('/trash')
 class TrashApi(Resource):
-    
+    """
+    This resource handles moving notes to and from the trash.
+
+    Methods:
+        - PUT: Move a note to or restore it from the trash.
+
+    Request Body:
+        - note_id: int, required. The ID of the note to be moved to or restored from the trash.
+
+    Responses:
+        - 200: If the note is successfully moved to or restored from the trash. Returns a success message and status code 200.
+        - 404: If the note with the specified ID is not found. Returns an error message and status code 404.
+        - 500: If any unexpected error occurs during the process. Returns an error message and status code 500.
+    """
     method_decorators = (authorize_user,)
     @api.expect(api.model('PutTrash', {"note_id":fields.Integer()}))
     def put(self,*args, **kwargs):
@@ -199,6 +318,20 @@ class TrashApi(Resource):
             app.logger.exception(e,exc_info=False)
             return {"message": str(e), "status" :500},500
 
+    """
+    This resource retrieves notes that are currently in the trash for a given user.
+
+    Methods:
+        - GET: Retrieve notes that are currently in the trash for the specified user.
+
+    Parameters:
+        - user_id: int, required. The ID of the user whose trashed notes are to be retrieved.
+
+    Responses:
+        - 200: If trashed notes are successfully retrieved. Returns a success message, status code 200, and the list of trashed notes' data.
+        - 404: If no trashed notes are found for the specified user. Returns an error message and status code 404.
+        - 500: If any unexpected error occurs during the process. Returns an error message and status code 500.
+    """
     def get(self,*args,**kwargs):
         try:
             user_id=kwargs["user_id"]
@@ -214,6 +347,23 @@ class TrashApi(Resource):
 
 @api.route("/collaborate")
 class CollaborateApi(Resource):
+    """
+    This resource handles collaboration on notes, allowing users to share notes with other users.
+
+    Methods:
+        - POST: Share a note with other users.
+
+    Request Body:
+        - note_id: int, required. The ID of the note to be shared.
+        - user_ids: list of int, required. The IDs of the users with whom the note will be shared.
+
+    Responses:
+        - 200: If the note is successfully shared. Returns a success message and status code 200.
+        - 403: If sharing is not allowed with the same user. Returns an error message and status code 403.
+        - 404: If the note or any of the specified users are not found. Returns an error message and status code 404.
+        - 409: If there's an integrity error, such as duplicate entry. Returns an error message and status code 409.
+        - 500: If any unexpected error occurs during the process. Returns an error message and status code 500.
+    """
     method_decorators = (authorize_user,)
     @api.expect(api.model("register",{"note_id": fields.Integer(),"user_ids": fields.List(fields.Integer)},))
     def post(*args, **kwargs):
@@ -236,7 +386,23 @@ class CollaborateApi(Resource):
         except Exception as e:
             return {"message":str(e),"status" :500},500
         
+    """
+    This resource handles removing collaborators from a note.
 
+    Methods:
+        - DELETE: Remove collaborators from a note.
+
+    Request Body:
+        - note_id: int, required. The ID of the note from which collaborators will be removed.
+        - user_ids: list of int, optional. The IDs of the collaborators to be removed.
+        - user_id: int, required. The ID of the user performing the operation.
+
+    Responses:
+        - 200: If collaborators are successfully removed from the note. Returns a success message and status code 200.
+        - 403: If trying to remove oneself as a collaborator. Returns an error message and status code 403.
+        - 404: If the note or any of the specified users are not found, or if a specified user is not a collaborator on the note. Returns an error message and status code 404.
+        - 500: If any unexpected error occurs during the process. Returns an error message and status code 500.
+    """
     def delete(self, **kwargs):
         try:
             data = request.json
@@ -264,7 +430,21 @@ class CollaborateApi(Resource):
             return {"message": str(e), "status": 500}, 500
         
         
-    
+    """
+    This resource retrieves all notes associated with a user, including notes owned by the user and notes shared with the user.
+
+    Methods:
+        - GET: Retrieve all notes associated with a user.
+
+    Parameters:
+        - user_id: int, required. The ID of the user whose notes are to be retrieved.
+
+    Responses:
+        - 200: If notes associated with the user are successfully retrieved. Returns a success message, status code 200, and the list of notes.
+        - 400: If user ID is not provided. Returns an error message and status code 400.
+        - 404: If the user is not found or if no notes are associated with the user. Returns an error message and status code 404.
+        - 500: If any unexpected error occurs during the process. Returns an error message and status code 500.
+    """
     def get(self,**kwargs):
         try:
             user_id = kwargs.get('user_id')
