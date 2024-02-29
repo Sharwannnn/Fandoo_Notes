@@ -12,6 +12,9 @@ from flask_restx import Api,Resource,fields
 from core.tasks import celery_send_mail
 from sqlalchemy.exc import IntegrityError
 
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+
 
 app = init_app()
 
@@ -25,8 +28,17 @@ api = Api(
     default_label = "Register_user",      
 )
 
+# Initializing Flask limiter
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="redis://localhost:6379/2",
+)
+
 
 @app.route('/')
+@limiter.limit("1 per second")
 def index():
    return {'message':'Fundoo Notes'}
 
@@ -52,7 +64,8 @@ class UserApi(Resource):
                Returns an error message and status code 400.
         - 409: If there is a duplicate username or email in the database. Returns an error message and status code 409.
     """
-    @api.expect(api.model("register_user",{"username": fields.String(),"password": fields.String(),"email": fields.String(),"location": fields.String(),},))
+    @api.expect(api.model("RegisterUser",{"username": fields.String(),"password": fields.String(),"email": fields.String(),"location": fields.String(),},))
+    @limiter.limit("1 per minute")
     def post(self):
         try:
             Serializer = UserValidator(**request.get_json())
@@ -60,6 +73,7 @@ class UserApi(Resource):
             db.session.add(user)
             db.session.commit()
             token=user.token(aud='toVerify')
+            # send_mail(user.username, user.email, token)
             # celery_send_mail.delay(user.username, user.email, token)
             return {"message":"user registered", "status": 201, 'data': user.to_json}, 201
         except ValidationError as e:
@@ -86,6 +100,7 @@ class UserDeleteAPI(Resource):
         - 400: If the user with the specified ID does not exist. Returns an error message and status code 400.
         - 500: If any unexpected error occurs during the deletion process. Returns an error message and status code 500.
     """
+    @limiter.limit("5 per minute")
     def delete(self, *args, **kwargs):
         try:
             user = User.query.filter_by(**kwargs).first()
@@ -117,6 +132,7 @@ class UserVerifyAPI(Resource):
         - 500: If any unexpected error occurs during the verification process. Returns an error message and status code 500.
     """
     @api.doc(params = {"token": "JWT token"})
+    @limiter.limit("10 per minute")
     def get(self):
         try:
             token = request.args.get("token")
@@ -160,7 +176,8 @@ class LoginApi(Resource):
         - 400: If there are validation errors in the request data or any other unexpected error occurs.
                Returns an error message and status code 400.
     """
-    @api.expect(api.model("register",{"username": fields.String(),"password": fields.String(),},))   
+    @api.expect(api.model("LoginUser",{"username": fields.String(),"password": fields.String(),},))   
+    @limiter.limit("10 per minute")
     def post(self):
         try:
             data=request.get_json()

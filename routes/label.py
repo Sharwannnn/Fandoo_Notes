@@ -9,6 +9,9 @@ from schemas.label_schemas import LabelValidator
 from flask_jwt_extended import decode_token
 from core.middleware import authorize_user
 
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+
 app=init_app()
 
 api = Api(
@@ -31,7 +34,12 @@ api = Api(
       
 )
 
-# api=Api(app=app,prefix='/api')
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="redis://localhost:6379/4",
+)
 
 
 @api.route('/labels')
@@ -50,7 +58,8 @@ class LabelRegisterApi(Resource):
         - 400: If there is an error during label creation. Returns an error message and status code 400.
     """
     method_decorators = (authorize_user,)
-    @api.expect(api.model("register",{"name": fields.String(),},))
+    @api.expect(api.model("CreateLabel",{"name": fields.String(),},))
+    @limiter.limit("1 per minute")
     def post(self, *args, **kwargs):
         try:
             serializer = LabelValidator(**request.get_json())
@@ -79,7 +88,7 @@ class LabelApi(Resource):
         - 500: If any unexpected error occurs during the process. Returns an error message and status code 500.
     """
     method_decorators = (authorize_user,)
-
+    @limiter.limit("10 per minute")
     def get(self,*args,**kwargs):
         try:
             label = Label.query.filter_by(**kwargs).first()
@@ -107,7 +116,8 @@ class LabelApi(Resource):
         - 404: If the label with the specified ID is not found. Returns an error message and status code 404.
         - 500: If any unexpected error occurs during the process. Returns an error message and status code 500.
     """
-    @api.expect(api.model("register",{"name": fields.String(),},))
+    @api.expect(api.model("ModifyLabel",{"name": fields.String(),},))
+    @limiter.limit("1 per minute")
     def put(self,label_id, *args, **kwargs):
         try:
             label = Label.query.get(label_id=label_id, user_id=request.json.get('user_id'))
@@ -137,6 +147,7 @@ class LabelApi(Resource):
         - 404: If the label with the specified ID is not found. Returns an error message and status code 404.
         - 500: If any unexpected error occurs during the process. Returns an error message and status code 500.
     """
+    @limiter.limit("5 per minute")
     def delete(self,*args,**kwargs):
         try:
             label = Label.query.filter_by(**kwargs).first()

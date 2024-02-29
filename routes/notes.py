@@ -15,6 +15,9 @@ from core.tasks import celery as c_app
 from datetime import datetime,timedelta,timezone
 import sqlalchemy
 
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+
 app=init_app()
 
 api = Api(
@@ -35,6 +38,13 @@ api = Api(
         }
     },
       
+)
+
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="redis://localhost:6379/3",
 )
 
 @api.route('/notes')
@@ -61,8 +71,9 @@ class NotesApi(Resource):
         - 400: If any unexpected error occurs during the creation process. Returns an error message and status code 400.
     """
     method_decorators = (authorize_user,)  
-    @api.expect(api.model("register",{"title": fields.String(),"description": fields.String(),"reminder": fields.String(),"color": fields.String(),
+    @api.expect(api.model("add_note",{"title": fields.String(),"description": fields.String(),"reminder": fields.String(),"color": fields.String(),
             },))
+    @limiter.limit("1 per minute")
     def post(self,*args,**kwargs):
         try:
             Serializer=NotesValidator(**request.get_json())
@@ -89,38 +100,6 @@ class NotesApi(Resource):
         except Exception as e:
             return {'message':str(e), 'status':400},400
         
-    """
-    This resource handles the retrieval of all notes registered by the user.
-
-    Method Decorators:
-        - authorize_user: Decorator to authorize user access.
-
-    Methods:
-        - GET: Retrieve notes for the specified user.
-
-    Parameters:
-        - user_id: int, required. The unique identifier of the user whose notes are to be retrieved.
-
-    Responses:
-        - 200: If notes are found for the user. Returns a success message, status code 200,
-               and a list of note data.
-        - 400: If the user ID is not provided or if no notes are found for the user. Returns an error message and status code 400.
-        - 500: If any unexpected error occurs during the retrieval process. Returns an error message and status code 500.
-    """
-    def get(self,*args,**kwargs):
-        try:
-            user_id = kwargs.get('user_id')
-            if not user_id:
-                return {'message':'userid not provided','status':400},400
-            user=User.query.filter_by(id=user_id).first()
-            shared_notes=[note.json for note in user.c_notes]
-            notes=Notes.query.filter_by(user_id=user_id).all()
-            if notes:
-                shared_notes.extend([note.json for note in notes])
-                return {'message':'notes found','status':200,'data':[note.json for note in notes]},200
-            return {'message':'Notes not found','status':400},400
-        except Exception as e:
-            return {'message':'something went wrong','status':500},500
 
         
 @api.route('/notes/<int:note_id>')
@@ -145,6 +124,7 @@ class NoteApiModification(Resource):
         - 500: If any unexpected error occurs during the retrieval process. Returns an error message and status code 500.
     """
     method_decorators = (authorize_user,)
+    @limiter.limit("10 per minute")
     def get(self,*args,**kwargs):
         try:
             user_id = kwargs.get('user_id')
@@ -170,7 +150,8 @@ class NoteApiModification(Resource):
         - 201: If the note is successfully deleted. Returns a success message and status code 201.
         - 400: If the note with the specified ID is not found. Returns an error message and status code 400.
         - 500: If any unexpected error occurs during the deletion process. Returns an error message and status code 500.
-    """  
+    """
+    @limiter.limit("5 per minute")  
     def delete(self, *args, **kwargs):
         try:
             note = Notes.query.filter_by(**kwargs).first()
@@ -206,7 +187,8 @@ class NoteApiModification(Resource):
         - 400: If the note with the specified ID is not found or if there is a validation error in the request body. Returns an error message and status code 400.
         - 500: If any unexpected error occurs during the modification process. Returns an error message and status code 500.
     """
-    @api.expect(api.model("register",{"title": fields.String(),"description": fields.String(),"reminder": fields.String(),"color": fields.String(),},))
+    @api.expect(api.model("ModifyNote",{"title": fields.String(),"description": fields.String(),"reminder": fields.String(),"color": fields.String(),},))
+    @limiter.limit("2 per minute")
     def put(self,note_id, *args, **kwargs):
         try:
             note=Notes.query.get(note_id)
@@ -243,7 +225,8 @@ class ArchiveApi(Resource):
         - 500: If any unexpected error occurs during the process. Returns an error message and status code 500.
     """
     method_decorators = (authorize_user,)
-    @api.expect(api.model('PutArchive', {"note_id":fields.Integer()}))
+    @api.expect(api.model('ArchiveNote', {"note_id":fields.Integer()}))
+    @limiter.limit("2 per minute")
     def put(self,*args, **kwargs):
         try:
             data = request.json
@@ -273,6 +256,8 @@ class ArchiveApi(Resource):
         - 404: If no archived notes are found for the specified user. Returns an error message and status code 404.
         - 500: If any unexpected error occurs during the process. Returns an error message and status code 500.
     """
+    @api.expect(api.model('GetArchiveNote', {"note_id":fields.Integer()}))
+    @limiter.limit("5 per minute")
     def get(self,*args,**kwargs):
         try:
             user_id=kwargs["user_id"]
@@ -302,7 +287,8 @@ class TrashApi(Resource):
         - 500: If any unexpected error occurs during the process. Returns an error message and status code 500.
     """
     method_decorators = (authorize_user,)
-    @api.expect(api.model('PutTrash', {"note_id":fields.Integer()}))
+    @api.expect(api.model('TrashNote', {"note_id":fields.Integer()}))
+    @limiter.limit("1 per minute")
     def put(self,*args, **kwargs):
         try:
             data = request.json
@@ -332,6 +318,8 @@ class TrashApi(Resource):
         - 404: If no trashed notes are found for the specified user. Returns an error message and status code 404.
         - 500: If any unexpected error occurs during the process. Returns an error message and status code 500.
     """
+    @api.expect(api.model('GetTrashNote', {"note_id":fields.Integer()}))
+    @limiter.limit("5 per minute")
     def get(self,*args,**kwargs):
         try:
             user_id=kwargs["user_id"]
@@ -365,7 +353,8 @@ class CollaborateApi(Resource):
         - 500: If any unexpected error occurs during the process. Returns an error message and status code 500.
     """
     method_decorators = (authorize_user,)
-    @api.expect(api.model("register",{"note_id": fields.Integer(),"user_ids": fields.List(fields.Integer)},))
+    @api.expect(api.model("CollaborateNote",{"note_id": fields.Integer(),"user_ids": fields.List(fields.Integer)},))
+    @limiter.limit("1 per minute")
     def post(*args, **kwargs):
         try:
             data=request.json
@@ -403,6 +392,8 @@ class CollaborateApi(Resource):
         - 404: If the note or any of the specified users are not found, or if a specified user is not a collaborator on the note. Returns an error message and status code 404.
         - 500: If any unexpected error occurs during the process. Returns an error message and status code 500.
     """
+    @api.expect(api.model("DeleteCollaborateNote",{"note_id":fields.List(fields.Integer), "user_ids": fields.List(fields.Integer),"user_id": fields.List(fields.Integer) },))
+    @limiter.limit("1 per minute")
     def delete(self, **kwargs):
         try:
             data = request.json
@@ -445,6 +436,8 @@ class CollaborateApi(Resource):
         - 404: If the user is not found or if no notes are associated with the user. Returns an error message and status code 404.
         - 500: If any unexpected error occurs during the process. Returns an error message and status code 500.
     """
+    @api.expect(api.model("GetCollaborateNote",{"user_ids": fields.List(fields.Integer)},))
+    @limiter.limit("5 per minute")
     def get(self,**kwargs):
         try:
             user_id = kwargs.get('user_id')

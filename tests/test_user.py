@@ -22,7 +22,7 @@ def test_register_user_should_return_failed_response(user_client):
         "location":"Mumbai"
     }
     response = user_client.post('/api/register', json = register_data, headers = {"Content-Type":"application/json"})
-    print(response.data)
+    # print(response.data)
     assert response.status_code == 400
     
 # Invalid Username
