@@ -12,10 +12,32 @@ jwt=JWTManager()
 mail=Mail()
 
 
+class Development:
+    SQLALCHEMY_DATABASE_URI = settings.database_url
+    SQLALCHEMY_TRACK_MODIFICATIONS = True
+    DEBUG = True
 
-def init_app():
+class Testing:
+    SQLALCHEMY_DATABASE_URI = "sqlite:///test.sqlite3"
+    SQLALCHEMY_TRACK_MODIFICATIONS = True
+    TESTING = True
+    
+class Production:
+    SQLALCHEMY_DATABASE_URI = settings.database_url
+    SQLALCHEMY_TRACK_MODIFICATIONS = True
+    DEBUG = False   
+
+config_mode = {
+    "debug": Development,
+    "testing": Testing,
+    "production": Production
+}
+
+
+def init_app(mode='debug'):
     app = Flask(__name__)
-    app.config['SQLALCHEMY_DATABASE_URI'] = settings.database_url
+    # app.config['SQLALCHEMY_DATABASE_URI'] = settings.database_url
+    app.config.from_object(config_mode[mode])
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True
     app.config['JWT_SECRET_KEY'] = settings.jwt_key
     app.config['MAIL_SERVER']='smtp.gmail.com'
@@ -40,4 +62,7 @@ def init_app():
     migrate.init_app(app, db)
     jwt.init_app(app)
     mail.init_app(app)
+    
+    with app.app_context():
+        db.create_all()
     return app

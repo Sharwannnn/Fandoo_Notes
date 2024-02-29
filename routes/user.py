@@ -10,6 +10,7 @@ from flask_jwt_extended.exceptions import JWTDecodeError
 from core.utils import send_mail
 from flask_restx import Api,Resource,fields
 from core.tasks import celery_send_mail
+from sqlalchemy.exc import IntegrityError
 
 
 app = init_app()
@@ -18,20 +19,10 @@ api = Api(
     app = app,
     prefix = "/api",
     doc = "/docs",
-    security = "apiKey",
     description = "REST API for User Registrations and Notes",
     title = "Fundoo Notes API",
     default = "Notes Operations",
-    default_label = "Register_user",
-    authorizations = {
-        "apiKey": {
-            "type": "apiKey",
-            "name": "Authorization",
-            "in": "header",
-            "required": True
-        }
-    },
-      
+    default_label = "Register_user",      
 )
 
 
@@ -50,26 +41,18 @@ class UserApi(Resource):
             db.session.add(user)
             db.session.commit()
             token=user.token(aud='toVerify')
-            # send_mail(user.username, user.email, token)
-            celery_send_mail.delay(user.username, user.email, token)
+            # celery_send_mail.delay(user.username, user.email, token)
             return {"message":"user registered", "status": 201, 'data': user.to_json}, 201
         except ValidationError as e:
             return {"message" : f'Invalid {"".join(json.loads(e.json())[0]["loc"])}', 'status': 400}, 400
+        except IntegrityError as e:
+            return {"message": "Duplicate Username/Email", 'status':409}, 409
         except Exception as e:
             return {"message" : str(e), 'status': 400}, 400
-        
-        
-
-
-
-
-
-
 
 
 @api.route('/register/<int:id>')
-class UserApi(Resource):
-
+class UserDeleteAPI(Resource):
         
     def delete(self, *args, **kwargs):
         try:
@@ -83,31 +66,12 @@ class UserApi(Resource):
             return {'message': str(e), 'status': 500}, 500
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 @api.route("/verify")
-class UserApi(Resource):
-    @api.expect(api.model("VerifyToken", {"token": fields.String(description="Verification token"),}))
-    def post(self):
+class UserVerifyAPI(Resource):
+    @api.doc(params = {"token": "JWT token"})
+    def get(self):
         try:
-            token = request.json.get("token")
+            token = request.args.get("token")
             if not token:
                 return {'message': 'Token not provided', 'status': 400}, 400
             
@@ -126,8 +90,6 @@ class UserApi(Resource):
             return {'message': 'Unable to decode token', 'status': 400}, 400
         except Exception as e:
             return {'message': str(e), 'status': 500}, 500
-
-
 
 
 @api.route("/login")

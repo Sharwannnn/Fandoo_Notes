@@ -35,7 +35,7 @@ api = Api(
 
 
 @api.route('/labels')
-class LabelApi(Resource):
+class LabelRegisterApi(Resource):
 
     method_decorators = (authorize_user,)
     
@@ -47,7 +47,6 @@ class LabelApi(Resource):
             },
         )
     )
-
     def post(self, *args, **kwargs):
         try:
             serializer = LabelValidator(**request.get_json())
@@ -58,9 +57,6 @@ class LabelApi(Resource):
         except Exception as e:
             return {'message': str(e), 'status': 400}, 400
         
-        
-    
-
 
 @api.route('/labels/<int:label_id>')
 class LabelApi(Resource):
@@ -80,7 +76,7 @@ class LabelApi(Resource):
     @api.expect(api.model("register",{"name": fields.String(),},))
     def put(self,label_id, *args, **kwargs):
         try:
-            label = Label.query.get(label_id)
+            label = Label.query.get(label_id=label_id, user_id=request.json.get('user_id'))
             if not label:
                 return {'message': 'Label not found', 'status': 404}, 404
             Serializer = LabelValidator(**request.get_json())
@@ -101,6 +97,6 @@ class LabelApi(Resource):
                 return {'message': 'Label not found', 'status': 404}, 404
             db.session.delete(label)
             db.session.commit()
-            return {'message': 'Label deleted successfully', 'status': 204}, 204
+            return {'message': 'Label deleted successfully', 'status': 200}, 200
         except Exception as e:
             return {'message': str(e), 'status': 500}, 500

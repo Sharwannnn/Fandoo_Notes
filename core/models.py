@@ -95,7 +95,7 @@ class Notes(db.Model):
             "title":self.title,
             "description":self.description,
             "color":self.color,
-            "reminder":self.reminder,
+            "reminder":str(self.reminder),
             "is_archieve":self.is_archieve,
             "is_trash":self.is_trash,
             "user_id":self.user_id,}

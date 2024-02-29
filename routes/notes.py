@@ -22,7 +22,7 @@ api = Api(
     prefix = "/api",
     doc = "/docs",
     security = "apiKey",
-    description = "REST API for User Registrations and Notes",
+    description = "REST API for Notes",
     title = "Fundoo Notes API",
     default = "Notes Operations",
     default_label = "Register",
@@ -37,7 +37,6 @@ api = Api(
       
 )
 
-# api=Api(app=app,prefix='/api')
 @api.route('/notes')
 class NotesApi(Resource):
 
@@ -54,7 +53,6 @@ class NotesApi(Resource):
             },
         )
     )
-    
     def post(self,*args,**kwargs):
         try:
             Serializer=NotesValidator(**request.get_json())
@@ -100,7 +98,7 @@ class NotesApi(Resource):
 
         
 @api.route('/notes/<int:note_id>')
-class noteapi(Resource):
+class NoteApiModification(Resource):
 
     method_decorators = (authorize_user,)
     def get(self,*args,**kwargs):
@@ -108,12 +106,9 @@ class noteapi(Resource):
             user_id = kwargs.get('user_id')
             if not user_id:
                 return {'message':'userid not provided','status':400},400
-            user=User.query.filter_by(id=user_id).first()
-            shared_notes=[note.json for note in user.c_notes]
-            notes=Notes.query.filter_by(user_id=user_id).all()
+            note=Notes.query.filter_by(user_id=user_id, id=kwargs.get('note_id')).all()
             if notes:
-                shared_notes.extend([note.json for note in notes])
-                return {'message':'notes found','status':200,'data':[note.json for note in notes]},200
+                return {'message':'notes found','status':200,'data':note.json},200
             return {'message':'Notes not found','status':400},400
         except Exception as e:
             return {'message':'something went wrong','status':500},500
@@ -152,39 +147,69 @@ class noteapi(Resource):
             return {'message':'something went wrong','status':500},500
         
         
-@api.route('/archive/<int:note_id>')
+@api.route('/archive')
 class ArchiveApi(Resource):
-
+    
     method_decorators = (authorize_user,)
-
-    def put(self, note_id):
+    @api.expect(api.model('PutArchive', {"note_id":fields.Integer()}))
+    def put(self,*args, **kwargs):
         try:
-            note = Notes.query.get(note_id)
+            data = request.json
+            note=Notes.query.filter_by(note_id=data['note_id'],user_id=data['user_id']).first()
             if not note:
-                return {'message': 'note not found', 'status': 400}, 400
-            note.is_archieve = True
+                return {"message":"Note not found","status": 404 },404
+            note.is_archieve = True if not note.is_archieve else False
             db.session.commit()
-            return {'message': 'note archived successfully', 'status': 200}, 200
+            if not note.is_archieve:
+                return {"message":" Note is unarchived","status":200,"data" :note.json},200
+            return {"message" : "Note is archived","status": 200,"data" : note.json},200
+        except ValueError as e:
+            app.logger.exception(e,exc_info=False)
+            return {"message": str(e), "status" :500},500
+
+    def get(self,*args,**kwargs):
+        try:
+            user_id=kwargs["user_id"]
+            notes=Notes.query.filter_by(user_id=user_id,is_archive=True, is_trash=False).all()
+            if not notes:
+                return {"message":"Notes not found","status": 404 },404
+            return {"message":"Retrieved archive notes","status":200,"data":[note.json for note in notes]},200
         except Exception as e:
-            return {'message': 'something went wrong', 'status': 500}, 500
+            app.logger.exception(e,exc_info=False)
+            return {"message": str(e), "status" :500},500 
 
 
-@api.route('/trash/<int:note_id>')
+@api.route('/trash')
 class TrashApi(Resource):
-
+    
     method_decorators = (authorize_user,)
-
-    def put(self, note_id):
+    @api.expect(api.model('PutTrash', {"note_id":fields.Integer()}))
+    def put(self,*args, **kwargs):
         try:
-            note = Notes.query.get(note_id)
+            data = request.json
+            note=Notes.query.filter_by(note_id=data['note_id'],user_id=data['user_id']).first()
             if not note:
-                return {'message': 'note not found', 'status': 400}, 400
-            note.is_trash = True
+                return {"message":"Note not found","status": 404 },404
+            note.is_trash = True if not note.is_trash else False
             db.session.commit()
-            return {'message': 'note moved to trash successfully', 'status': 200}, 200
+            if not note.is_trash:
+                return {"message":" Note is restored successfully","status":200},200
+            return {"message" : "Note moved to Trash","status": 200},200
+        except ValueError as e:
+            app.logger.exception(e,exc_info=False)
+            return {"message": str(e), "status" :500},500
+
+    def get(self,*args,**kwargs):
+        try:
+            user_id=kwargs["user_id"]
+            notes=Notes.query.filter_by(user_id=user_id,is_trash=True, is_archive=False).all()
+            if not notes:
+                return {"message":"Notes not found","status": 404 },404
+            return {"message":"Notes found","status":200,
+                    "data":[note.json for note in notes]},200
         except Exception as e:
-            return {'message': 'something went wrong', 'status': 500}, 500
-      
+            app.logger.exception(e,exc_info=False)
+            return {"message": str(e), "status" :500},500
       
 
 @api.route("/collaborate")
