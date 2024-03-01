@@ -15,6 +15,7 @@ from sqlalchemy.exc import IntegrityError
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
+import logging
 
 app = init_app()
 
@@ -35,6 +36,10 @@ limiter = Limiter(
     default_limits=["200 per day", "50 per hour"],
     storage_uri="redis://localhost:6379/2",
 )
+
+# Set up logging
+logging.basicConfig(level=logging.ERROR)
+logger = logging.getLogger(__name__)
 
 
 @app.route('/')
@@ -77,10 +82,13 @@ class UserApi(Resource):
             # celery_send_mail.delay(user.username, user.email, token)
             return {"message":"user registered", "status": 201, 'data': user.to_json}, 201
         except ValidationError as e:
+            logger.exception("Validation error occurred during user registration")
             return {"message" : f'Invalid {"".join(json.loads(e.json())[0]["loc"])}', 'status': 400}, 400
         except IntegrityError as e:
+            logger.exception("Integrity error occurred during user registration")
             return {"message": "Duplicate Username/Email", 'status':409}, 409
         except Exception as e:
+            logger.exception("Unexpected error occurred during user registration")
             return {"message" : str(e), 'status': 400}, 400
 
 
@@ -110,6 +118,7 @@ class UserDeleteAPI(Resource):
             db.session.commit()
             return {'message': "User is sucessfully deleted", "status": 201}, 201
         except Exception as e:
+            logger.exception("Unexpected error occurred during user deletion")
             return {'message': str(e), 'status': 500}, 500
 
 
@@ -151,8 +160,10 @@ class UserVerifyAPI(Resource):
             db.session.commit()
             return {'message': 'User verified successfully', 'status': 200}, 200
         except JWTDecodeError:
+            logger.exception("Unable to decode token during user verification")
             return {'message': 'Unable to decode token', 'status': 400}, 400
         except Exception as e:
+            logger.exception("Unexpected error occurred during user verification")
             return {'message': str(e), 'status': 500}, 500
 
 
@@ -187,6 +198,8 @@ class LoginApi(Resource):
                 return {"message":"login successful", "status": 200, 'token': token}, 200
             return {"message" : "Username or password is invalid", "status": 401}, 401
         except ValidationError as e:
+            logger.exception("Validation error occurred during user login")
             return {"message":f'Invalid {"".join(json.loads(e.json())[0]["loc"])}', 'status':400}, 400
         except Exception as e:
+            logger.exception("Unexpected error occurred during user login")
             return {"message":"Something was wrong", 'status':400}, 400

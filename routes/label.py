@@ -12,6 +12,8 @@ from core.middleware import authorize_user
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
+import logging
+
 app=init_app()
 
 api = Api(
@@ -41,6 +43,10 @@ limiter = Limiter(
     storage_uri="redis://localhost:6379/4",
 )
 
+# Set up logging
+logging.basicConfig(level=logging.ERROR)
+logger = logging.getLogger(__name__)
+
 
 @api.route('/labels')
 class LabelRegisterApi(Resource):
@@ -68,6 +74,7 @@ class LabelRegisterApi(Resource):
             db.session.commit()
             return {'message': 'Label created', 'status': 201, 'data': label.json}, 201
         except Exception as e:
+            logger.exception("Error occurred while creating label")
             return {'message': str(e), 'status': 400}, 400
         
 
@@ -96,6 +103,7 @@ class LabelApi(Resource):
                 return {'message': 'Label not found', 'status': 404}, 404
             return {'message': 'Label found', 'status': 200, 'data': label.json}, 200
         except Exception as e:
+            logger.exception("Error occurred while retrieving label")
             return {'message': str(e), 'status': 500}, 500
 
     
@@ -130,6 +138,7 @@ class LabelApi(Resource):
             db.session.commit()
             return {'message': 'Label updated successfully', 'status': 200}, 200
         except Exception as e:
+            logger.exception("Error occurred while updating label")
             return {'message': str(e), 'status': 500}, 500
     
 
@@ -157,4 +166,5 @@ class LabelApi(Resource):
             db.session.commit()
             return {'message': 'Label deleted successfully', 'status': 200}, 200
         except Exception as e:
+            logger.exception("Error occurred while deleting label")
             return {'message': str(e), 'status': 500}, 500

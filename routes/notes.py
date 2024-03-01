@@ -18,6 +18,8 @@ import sqlalchemy
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
+import logging
+
 app=init_app()
 
 api = Api(
@@ -46,6 +48,10 @@ limiter = Limiter(
     default_limits=["200 per day", "50 per hour"],
     storage_uri="redis://localhost:6379/3",
 )
+
+# Set up logging
+logging.basicConfig(level=logging.ERROR)
+logger = logging.getLogger(__name__)
 
 @api.route('/notes')
 class NotesApi(Resource):
@@ -98,6 +104,7 @@ class NotesApi(Resource):
             RedisUtils.save(f'user_{notes.user_id}', f'notes_{notes.note_id}', json.dumps(notes.json))
             return {'message':"note created", "status": 201,'data':notes.json}, 201
         except Exception as e:
+            logger.exception("Error occurred while creating note")
             return {'message':str(e), 'status':400},400
         
 
@@ -135,6 +142,7 @@ class NoteApiModification(Resource):
                 return {'message':'notes found','status':200,'data':note.json},200
             return {'message':'Notes not found','status':400},400
         except Exception as e:
+            logger.exception("Error occurred while retrieving note")
             return {'message':'something went wrong','status':500},500
     
     """
@@ -163,6 +171,7 @@ class NoteApiModification(Resource):
             RedisUtils.delete(f'user_{note.user_id}', f'notes_{note.note_id}')
             return {'message': "note is sucessfully deleted", "status": 201}, 201
         except Exception as e:
+            logger.exception("Error occurred while deleting note")
             return {'message': str(e), 'status': 500}, 500
 
     
@@ -371,8 +380,10 @@ class CollaborateApi(Resource):
             db.session.commit()
             return {"message" : "Note shared successfully","status":200 },200
         except sqlalchemy.exc.IntegrityError as e:
-                return {"message":str(e),"status":409},409
+            logger.exception("Integrity error occurred while sharing note")
+            return {"message":str(e),"status":409},409
         except Exception as e:
+            logger.exception("Error occurred while sharing note")
             return {"message":str(e),"status" :500},500
         
     """
@@ -418,6 +429,7 @@ class CollaborateApi(Resource):
             db.session.commit()
             return {"message": "Collaborators removed successfully", "status": 200}, 200
         except Exception as e:
+            logger.exception("Error occurred while removing collaborators from note")
             return {"message": str(e), "status": 500}, 500
         
         
@@ -461,6 +473,7 @@ class CollaborateApi(Resource):
                 return {'message': 'No notes found', 'status': 404}, 404
 
         except Exception as e:
+            logger.exception("Error occurred while retrieving notes associated with user")
             return {'message': str(e), 'status': 500}, 500
 
     
